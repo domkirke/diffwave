@@ -16,7 +16,8 @@
 from argparse import ArgumentParser
 from torch.cuda import device_count
 from torch.multiprocessing import spawn
-
+import sys
+sys.path.insert(0, "src/")
 from diffwave.learner import train, train_distributed
 from diffwave.params import params
 
@@ -36,6 +37,7 @@ def main(args):
     port = _get_free_port()
     spawn(train_distributed, args=(replica_count, port, args, params), nprocs=replica_count, join=True)
   else:
+    params['batch_size'] = 2
     train(args, params)
 
 
