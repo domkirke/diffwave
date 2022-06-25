@@ -30,6 +30,7 @@ def _get_free_port():
 
 def main(args):
   replica_count = device_count()
+  params['unconditional'] = bool(args.unconditional)
   if replica_count > 1:
     if params.batch_size % replica_count != 0:
       raise ValueError(f'Batch size {params.batch_size} is not evenly divisble by # GPUs {replica_count}.')
@@ -51,4 +52,5 @@ if __name__ == '__main__':
       help='maximum number of training steps')
   parser.add_argument('--fp16', action='store_true', default=False,
       help='use 16-bit floating point operations for training')
+  parser.add_argument('--unconditional', default=0, type=int, help="is generation unconditional")
   main(parser.parse_args())
