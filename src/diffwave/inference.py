@@ -13,6 +13,8 @@
 # limitations under the License.
 # ==============================================================================
 
+import sys
+sys.path.append("../")
 import numpy as np
 import os
 import torch
@@ -20,8 +22,8 @@ import torchaudio
 
 from argparse import ArgumentParser
 
-from diffwave.params import AttrDict, params as base_params
-from diffwave.model import DiffWave
+from .params import AttrDict, params as base_params
+from .model import DiffWave
 
 
 models = {}
@@ -67,7 +69,6 @@ def predict(spectrogram=None, model_dir=None, params=None, device=torch.device('
           break
     T = np.array(T, dtype=np.float32)
 
-
     if not model.params.unconditional:
       if len(spectrogram.shape) == 2:# Expand rank 2 tensors by adding a batch dimension.
         spectrogram = spectrogram.unsqueeze(0)
@@ -75,7 +76,6 @@ def predict(spectrogram=None, model_dir=None, params=None, device=torch.device('
       audio = torch.randn(spectrogram.shape[0], model.params.hop_samples * spectrogram.shape[-1], device=device)
     else:
       audio = torch.randn(1, params.audio_len, device=device)
-    noise_scale = torch.from_numpy(alpha_cum**0.5).float().unsqueeze(1).to(device)
 
     for n in range(len(alpha) - 1, -1, -1):
       c1 = 1 / alpha[n]**0.5

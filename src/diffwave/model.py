@@ -141,6 +141,9 @@ class DiffWave(nn.Module):
     self.skip_projection = Conv1d(params.residual_channels, params.residual_channels, 1)
     self.output_projection = Conv1d(params.residual_channels, 1, 1)
     nn.init.zeros_(self.output_projection.weight)
+    if params.checkpoint is not None:
+      state_dict = torch.load(params.checkpoint)
+      self.load_state_dict(state_dict["model"])
 
   def forward(self, audio, diffusion_step, spectrogram=None):
     assert (spectrogram is None and self.spectrogram_upsampler is None) or \

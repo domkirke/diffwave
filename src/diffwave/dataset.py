@@ -86,7 +86,7 @@ class Collator:
           if len(record['spectrogram']) < self.params.crop_mel_frames:
             pad_length = self.params.audio_len - len(record['audio'])
             record['audio'] = torch.cat([record['audio'], torch.zeros(pad_length, device=record['audio'].device, dtype=record['audio'].dtype)])
-            record['spectrogram'] = torch.cat([record['audio'], torch.zeros(record['spectrogram'].size(0), pad_length, device=record['audio'].device, dtype=record['audio'].dtype)])
+            record['spectrogram'] = torch.cat([record['audio'], torch.zeros(record['spectrogram'].shape[0], pad_length, device=record['audio'].device, dtype=record['audio'].dtype)])
 
           start = random.randint(0, record['spectrogram'].shape[0] - self.params.crop_mel_frames)
           end = start + self.params.crop_mel_frames
