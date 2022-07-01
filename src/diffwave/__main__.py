@@ -32,6 +32,7 @@ def main(args):
   replica_count = device_count()
   params['unconditional'] = bool(args.unconditional)
   params['checkpoint'] = args.checkpoint
+  params['sampling_rate'] = int(args.sr)
   if replica_count > 1:
     if params.batch_size % replica_count != 0:
       raise ValueError(f'Batch size {params.batch_size} is not evenly divisble by # GPUs {replica_count}.')
@@ -54,7 +55,7 @@ if __name__ == '__main__':
   parser.add_argument('--fp16', action='store_true', default=False,
       help='use 16-bit floating point operations for training')
   parser.add_argument('--unconditional', default=0, type=int, help="is generation unconditional")
-  parser.add_argument('--sampling_rate')
+  parser.add_argument('--sr', default=22050, type=int, help="sampling rate")
   parser.add_argument('--checkpoint', default=None, type=str, help="resume checkpoint")
 
   main(parser.parse_args())
