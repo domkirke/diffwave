@@ -26,7 +26,8 @@ from tqdm import tqdm
 from diffwave.params import params
 
 
-def transform(filename):
+def transform(filename, args):
+  params['sample_rate'] = args.sr
   if T.__version__ > '0.7.0':
     audio, sr = T.load(filename)
     audio = torch.clamp(audio[0], -1.0, 1.0)
@@ -59,11 +60,13 @@ def transform(filename):
 def main(args):
   filenames = glob(f'{args.dir}/**/*.wav', recursive=True)
   with ProcessPoolExecutor() as executor:
-    list(tqdm(executor.map(transform, filenames), desc='Preprocessing', total=len(filenames)))
+    list(tqdm(executor.map(transform, filenames, args), desc='Preprocessing', total=len(filenames)))
 
 
 if __name__ == '__main__':
   parser = ArgumentParser(description='prepares a dataset to train DiffWave')
   parser.add_argument('dir',
       help='directory containing .wav files for training')
+  parser.add_argument('--sr', type=int, defualt=22050,
+      help="sampling rate for preprocessing")
   main(parser.parse_args())

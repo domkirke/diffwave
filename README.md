@@ -3,6 +3,29 @@
 
 DiffWave is a fast, high-quality neural vocoder and waveform synthesizer. It starts with Gaussian noise and converts it into speech via iterative refinement. The speech can be controlled by providing a conditioning signal (e.g. log-scaled Mel spectrogram). The model and architecture details are described in [DiffWave: A Versatile Diffusion Model for Audio Synthesis](https://arxiv.org/pdf/2009.09761.pdf).
 
+## domkirke version
+
+I made some slightly update ; notably, audio import was not working with current torchaudio versions, system bugged if some audio excerpts were too short and some argument were not customizable without editing the `params.py` thing. Also added some helpers scripts to resample / slice data.
+
+Typical utilisation : 
+```
+conda create -n diffwave python=3.7
+conda activate diffwave
+pip install -r requirements.txt
+DATASET_ROOT=#your dataset here
+TRAINING_NAME=#results path
+
+# if you only have large files, you can slice them with the line below (last argument)
+# is length of slices in seconds
+# python3 slice_dataset.py $DATASET_ROOT ${DATASET_ROOT}_sliced 10.0 
+# DATSET_ROOT=${DATASET_ROOT}_sliced
+python3 resample_dataset ${DATASET_ROOT} ${DATASET_ROOT}_22kHz 22050
+DATSET_ROOT=${DATASET_ROOT}_22kHz
+python3 src/diffwave/preprocess.py ${DATASET_ROOT} --sr 22050
+python3 src/diffwave/__main__.py ${TRAINING_NAME} ${DATASET_ROOT} --unconditional 0
+```
+
+
 ## What's new (2021-11-09)
 - unconditional waveform synthesis (thanks to [Andrechang](https://github.com/Andrechang)!)
 

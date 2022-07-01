@@ -54,6 +54,7 @@ if __name__ == '__main__':
   parser.add_argument('--fp16', action='store_true', default=False,
       help='use 16-bit floating point operations for training')
   parser.add_argument('--unconditional', default=0, type=int, help="is generation unconditional")
+  parser.add_argument('--sampling_rate')
   parser.add_argument('--checkpoint', default=None, type=str, help="resume checkpoint")
 
   main(parser.parse_args())
