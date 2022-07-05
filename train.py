@@ -16,46 +16,29 @@
 from argparse import ArgumentParser
 from torch.cuda import device_count
 from torch.multiprocessing import spawn
-import sys
-sys.path.insert(0, "src/")
 from diffwave.learner import train, train_distributed
-from diffwave.params import params
-
+from omegaconf import OmegaConf
 
 def _get_free_port():
   import socketserver
   with socketserver.TCPServer(('localhost', 0), None) as s:
     return s.server_address[1]
 
-
 def main(args):
   replica_count = device_count()
-  params['unconditional'] = bool(args.unconditional)
-  params['checkpoint'] = args.checkpoint
-  params['sampling_rate'] = int(args.sr)
+  params = OmegaConf.load(args.config)
   if replica_count > 1:
     if params.batch_size % replica_count != 0:
       raise ValueError(f'Batch size {params.batch_size} is not evenly divisble by # GPUs {replica_count}.')
     params.batch_size = params.batch_size // replica_count
     port = _get_free_port()
-    spawn(train_distributed, args=(replica_count, port, args, params), nprocs=replica_count, join=True)
+    spawn(train_distributed, args=(replica_count, port, params), nprocs=replica_count, join=True)
   else:
     params['batch_size'] = 2
-    train(args, params)
+    train(params)
 
 
 if __name__ == '__main__':
   parser = ArgumentParser(description='train (or resume training) a DiffWave model')
-  parser.add_argument('model_dir',
-      help='directory in which to store model checkpoints and training logs')
-  parser.add_argument('data_dirs', nargs='+',
-      help='space separated list of directories from which to read .wav files for training')
-  parser.add_argument('--max_steps', default=None, type=int,
-      help='maximum number of training steps')
-  parser.add_argument('--fp16', action='store_true', default=False,
-      help='use 16-bit floating point operations for training')
-  parser.add_argument('--unconditional', default=0, type=int, help="is generation unconditional")
-  parser.add_argument('--sr', default=22050, type=int, help="sampling rate")
-  parser.add_argument('--checkpoint', default=None, type=str, help="resume checkpoint")
-
+  parser.add_argument('--config', type=str, default="config.yaml", help="configuration file")
   main(parser.parse_args())

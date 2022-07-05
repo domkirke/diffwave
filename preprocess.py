@@ -16,27 +16,23 @@
 import numpy as np
 import torch
 import torchaudio as T
+from typing import Iterator
 import torchaudio.transforms as TT
 
 from argparse import ArgumentParser
 from concurrent.futures import ProcessPoolExecutor
 from glob import glob
+from omegaconf import OmegaConf
 from tqdm import tqdm
+from diffwave import IterableConfig
 
-from diffwave.params import params
-
-
-def transform(filename, args):
-  params['sample_rate'] = args.sr
-  if T.__version__ > '0.7.0':
-    audio, sr = T.load(filename)
-    audio = torch.clamp(audio[0], -1.0, 1.0)
-  else:
-    audio, sr = T.load(filename)
-    audio = torch.clamp(audio[0], -1.0, 1.0)
+def transform(filename, params):
+  audio, sr = T.load(filename)
+  audio = torch.clamp(audio[0], -1.0, 1.0)
 
   if params.sample_rate != sr:
     raise ValueError(f'Invalid sample rate {sr}.')
+
   mel_args = {
       'sample_rate': sr,
       'win_length': params.hop_samples * 4,
@@ -56,17 +52,13 @@ def transform(filename, args):
     spectrogram = torch.clamp((spectrogram + 100) / 100, 0.0, 1.0)
     np.save(f'{filename}.spec.npy', spectrogram.cpu().numpy())
 
-
 def main(args):
-  filenames = glob(f'{args.dir}/**/*.wav', recursive=True)
+  params = OmegaConf.load(args.config)
+  filenames = glob(f'{params.data_dirs}/**/*.wav', recursive=True)
   with ProcessPoolExecutor() as executor:
-    list(tqdm(executor.map(transform, filenames, args), desc='Preprocessing', total=len(filenames)))
-
+    list(tqdm(executor.map(transform, filenames, IterableConfig(params)), desc='Preprocessing', total=len(filenames)))
 
 if __name__ == '__main__':
   parser = ArgumentParser(description='prepares a dataset to train DiffWave')
-  parser.add_argument('dir',
-      help='directory containing .wav files for training')
-  parser.add_argument('--sr', type=int, defualt=22050,
-      help="sampling rate for preprocessing")
+  parser.add_argument('--config', default="config.yaml", type=str, help='configuration file')
   main(parser.parse_args())

@@ -22,10 +22,10 @@ from torch.nn.parallel import DistributedDataParallel
 from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 import pdb
+from omegaconf import OmegaConf
 
-from diffwave.dataset import from_path, from_gtzan
-from diffwave.model import DiffWave
-from diffwave.params import AttrDict
+from .dataset import from_path, from_gtzan
+from .model import DiffWave
 
 
 def _nested_map(struct, map_fn):
@@ -39,15 +39,15 @@ def _nested_map(struct, map_fn):
 
 
 class DiffWaveLearner:
-  def __init__(self, model_dir, model, dataset, optimizer, params, *args, **kwargs):
+  def __init__(self, model_dir, model, dataset, optimizer, params, **kwargs):
     os.makedirs(model_dir, exist_ok=True)
     self.model_dir = model_dir
     self.model = model
     self.dataset = dataset
     self.optimizer = optimizer
     self.params = params
-    self.autocast = torch.cuda.amp.autocast(enabled=kwargs.get('fp16', False))
-    self.scaler = torch.cuda.amp.GradScaler(enabled=kwargs.get('fp16', False))
+    self.autocast = torch.cuda.amp.autocast(enabled=params.get('fp16', False))
+    self.scaler = torch.cuda.amp.GradScaler(enabled=params.get('fp16', False))
     self.step = 0
     self.is_master = True
 
@@ -56,6 +56,7 @@ class DiffWaveLearner:
     self.noise_level = torch.tensor(noise_level.astype(np.float32))
     self.loss_fn = nn.L1Loss()
     self.summary_writer = None
+    OmegaConf.save(params, f"{model_dir}/config.yaml")
 
   def state_dict(self):
     if hasattr(self.model, 'module') and isinstance(self.model.module, nn.Module):
@@ -139,7 +140,7 @@ class DiffWaveLearner:
 
     self.scaler.scale(loss).backward()
     self.scaler.unscale_(self.optimizer)
-    self.grad_norm = nn.utils.clip_grad_norm_(self.model.parameters(), self.params.max_grad_norm or 1e9)
+    self.grad_norm = nn.utils.clip_grad_norm_(self.model.parameters(), self.params.get('max_grad_norm') or 1e9)
     self.scaler.step(self.optimizer)
     self.scaler.update()
     return loss
@@ -155,35 +156,35 @@ class DiffWaveLearner:
     self.summary_writer = writer
 
 
-def _train_impl(replica_id, model, dataset, args, params):
+def _train_impl(replica_id, model, dataset, params):
   torch.backends.cudnn.benchmark = True
   opt = torch.optim.Adam(model.parameters(), lr=params.learning_rate)
 
-  learner = DiffWaveLearner(args.model_dir, model, dataset, opt, params, fp16=args.fp16)
+  learner = DiffWaveLearner(params.model_dir, model, dataset, opt, params)
   learner.is_master = (replica_id == 0)
   learner.restore_from_checkpoint()
-  learner.train(max_steps=args.max_steps)
+  learner.train(max_steps=params.get('max_steps'))
 
 
-def train(args, params):
-  if args.data_dirs[0] == 'gtzan':
+def train(params):
+  if params.data_dirs[0] == 'gtzan':
     dataset = from_gtzan(params)
   else:
-    dataset = from_path(args.data_dirs, params)
+    dataset = from_path(params.data_dirs, params)
   model = DiffWave(params).cuda()
-  _train_impl(0, model, dataset, args, params)
+  _train_impl(0, model, dataset, params)
 
 
-def train_distributed(replica_id, replica_count, port, args, params):
+def train_distributed(replica_id, replica_count, port, params):
   os.environ['MASTER_ADDR'] = 'localhost'
   os.environ['MASTER_PORT'] = str(port)
   torch.distributed.init_process_group('nccl', rank=replica_id, world_size=replica_count)
-  if args.data_dirs[0] == 'gtzan':
+  if params.data_dirs[0] == 'gtzan':
     dataset = from_gtzan(params, is_distributed=True)
   else:
-    dataset = from_path(args.data_dirs, params, is_distributed=True)
+    dataset = from_path(params.data_dirs, params, is_distributed=True)
   device = torch.device('cuda', replica_id)
   torch.cuda.set_device(device)
   model = DiffWave(params).to(device)
   model = DistributedDataParallel(model, device_ids=[replica_id])
-  _train_impl(replica_id, model, dataset, args, params)
+  _train_impl(replica_id, model, dataset, params)

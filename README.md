@@ -21,8 +21,8 @@ TRAINING_NAME=#results path
 # DATSET_ROOT=${DATASET_ROOT}_sliced
 python3 resample_dataset ${DATASET_ROOT} ${DATASET_ROOT}_22kHz 22050
 DATSET_ROOT=${DATASET_ROOT}_22kHz
-python3 src/diffwave/preprocess.py ${DATASET_ROOT} --sr 22050
-python3 src/diffwave/__main__.py ${TRAINING_NAME} ${DATASET_ROOT} --sr 22050 --unconditional 0
+python3 preprocess.py ${DATASET_ROOT} --config config.yaml
+python3 train.py --config config.yaml
 ```
 
 

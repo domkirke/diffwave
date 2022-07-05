@@ -13,7 +13,6 @@
 # limitations under the License.
 # ==============================================================================
 
-import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -141,7 +140,7 @@ class DiffWave(nn.Module):
     self.skip_projection = Conv1d(params.residual_channels, params.residual_channels, 1)
     self.output_projection = Conv1d(params.residual_channels, 1, 1)
     nn.init.zeros_(self.output_projection.weight)
-    if params.checkpoint is not None:
+    if params.get('checkpoint') is not None:
       state_dict = torch.load(params.checkpoint)
       self.load_state_dict(state_dict["model"])
 
